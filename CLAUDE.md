@@ -10,7 +10,7 @@ OCR document processing system for professional auditing workflows. Built with V
 
 ```bash
 npm run dev      # Start development server (http://localhost:5173)
-npm run build    # Production build
+npm run build    # Production build (runs vue-tsc first)
 npm run lint     # Run ESLint
 npm run preview  # Preview production build
 ```
@@ -24,30 +24,55 @@ npm run preview  # Preview production build
 - **State**: Pinia
 - **Styling**: Tailwind CSS v3 with custom theme
 - **Icons**: Lucide Vue Next
+- **HTTP Client**: Axios
 
 ## Architecture
 
 ```
 src/
-├── main.ts              # App entry, Naive UI theme configuration
+├── main.ts              # App entry, Naive UI theme + manual component registration
 ├── App.vue              # Root component with router-view
+├── api/
+│   └── ocr.ts           # OCR API integration (processOcr function)
 ├── assets/
 │   └── globals.css      # Tailwind base + CSS variables (professional audit theme)
 ├── router/
 │   └── index.ts         # Route definitions
-├── stores/              # Pinia stores (if needed)
+├── stores/
+│   └── ocr.ts           # Pinia store for upload/OCR state
 ├── views/
 │   └── MainView.vue     # Main layout wrapper
 └── components/
     ├── layout/
     │   └── AppSidebar.vue   # Dark sidebar navigation
     └── features/            # Feature components
-        ├── FileUpload.vue
-        ├── OcrRecognition.vue
+        ├── FileUpload.vue        # File upload + OCR trigger
+        ├── OcrRecognition.vue    # OCR results display
         ├── FileCompare.vue
         ├── ContentProofread.vue
         └── OcrAudit.vue
 ```
+
+## OCR API Integration
+
+**Backend**: `zzy-ocr-service` running at `http://localhost:8089`
+
+**Endpoint**: `POST /api/ocr/v1/ocr/process`
+- Content-Type: `multipart/form-data`
+- Params: `file` (required), `fileType`, `language`, `extractTables`, `extractText`, `structuredOutput`, `tableMode`
+
+**Key types** (`src/api/ocr.ts`):
+- `OcrProcessParams` - request params
+- `OcrProcessResponse` - response with `extractedText`, `data.text`, `data.tables`
+- `OcrProgressEvent` - upload/processing progress callback
+
+**File upload flow**:
+1. `FileUpload.vue` adds files to Pinia store via `useOcrStore().addFiles()`
+2. `handleStartOcr()` calls `processOcr()` from `src/api/ocr.ts`
+3. Results stored in Pinia store via `useOcrStore().updateFile()`
+4. Navigates to `/ocr?selected=<fileId>` which auto-selects the file
+
+**Vite proxy** (`vite.config.ts`): `/api` requests proxied to `http://localhost:8089`
 
 ## Design System
 
@@ -58,18 +83,22 @@ src/
 - Cards: White with subtle shadows
 - Border: `#E2E8F0` (slate-200)
 
-**Naive UI Theme Overrides** are configured in `src/main.ts` to match the professional blue theme.
+**Naive UI**: Manual component registration in `main.ts` (no auto-import plugin). Available components: `NButton`, `NInput`, `NSelect`, `NDataTable`, `NDropdown`, `NInputGroup`, `NTag`, `NSpin`, `NIcon`, `NTabs`, `NTabPane`, `NProgress`.
 
 ## Path Aliases
 
 - `@/` maps to `src/`
 - Example: `@/components` → `src/components`
 
+## Supported File Types
+
+PDF, PNG, JPG, JPEG, BMP, TIFF, TIF, GIF, DOCX, XLSX, TXT
+
 ## Important Notes
 
 - All feature components are in `src/components/features/`
 - Sidebar uses inline styles for precise dark theme control
-- Naive UI components require theme configuration in `main.ts`
+- Naive UI components require manual registration in `main.ts`
+- `VITE_API_BASE_URL` is empty in `.env` — dev uses Vite proxy (relative paths); set full URL for production
 - Tailwind config (`tailwind.config.js`) contains the color system
-- All data is mock/simulated — no backend API exists yet
 - TypeScript strict mode enabled

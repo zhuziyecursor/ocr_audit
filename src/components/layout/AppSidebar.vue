@@ -127,7 +127,6 @@ import {
   ClipboardList,
   FileText,
   Settings,
-  ChevronLeft,
   ChevronRight,
 } from 'lucide-vue-next'
 

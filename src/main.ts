@@ -8,6 +8,12 @@ import {
   NDataTable,
   NDropdown,
   NInputGroup,
+  NTag,
+  NSpin,
+  NIcon,
+  NTabs,
+  NTabPane,
+  NProgress,
   type GlobalThemeOverrides,
 } from 'naive-ui'
 import App from './App.vue'
@@ -73,7 +79,8 @@ const themeOverrides: GlobalThemeOverrides = {
   },
 }
 
-const naive = create({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const naive: any = create({
   components: [
     NButton,
     NInput,
@@ -81,9 +88,15 @@ const naive = create({
     NDataTable,
     NDropdown,
     NInputGroup,
+    NTag,
+    NSpin,
+    NIcon,
+    NTabs,
+    NTabPane,
+    NProgress,
   ],
   themeOverrides,
-})
+} as any)
 
 const app = createApp(App)
 

@@ -23,7 +23,7 @@
           ref="fileInputRef"
           type="file"
           multiple
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.md,.txt"
+          accept=".pdf,.png,.jpg,.jpeg,.bmp,.tiff,.tif,.gif,.docx,.xlsx,.txt"
           @change="handleFileSelect"
           class="hidden"
         />
@@ -38,25 +38,27 @@
         </p>
         <div class="mt-4 flex flex-wrap justify-center gap-2">
           <n-tag type="default">PDF</n-tag>
+          <n-tag type="default">PNG</n-tag>
+          <n-tag type="default">JPG</n-tag>
           <n-tag type="default">Word</n-tag>
           <n-tag type="default">Excel</n-tag>
-          <n-tag type="default">Markdown</n-tag>
+          <n-tag type="default">TXT</n-tag>
         </div>
       </div>
     </div>
 
     <!-- File List -->
-    <div v-if="files.length > 0" class="rounded-lg border border-border bg-card p-6">
+    <div v-if="ocrStore.files.length > 0" class="rounded-lg border border-border bg-card p-6">
       <div class="mb-4">
         <h3 class="text-lg font-semibold text-foreground">已上传文件</h3>
         <p class="text-sm text-muted-foreground">
-          共 {{ files.length }} 个文件，
-          {{ files.filter((f) => f.status === 'success').length }} 个已完成
+          共 {{ ocrStore.files.length }} 个文件，
+          {{ ocrStore.files.filter((f) => f.status === 'completed').length }} 个已完成
         </p>
       </div>
       <div class="space-y-3">
         <div
-          v-for="uploadedFile in files"
+          v-for="uploadedFile in ocrStore.files"
           :key="uploadedFile.id"
           class="flex items-center gap-4 rounded-lg border border-border bg-card p-4"
         >
@@ -75,16 +77,22 @@
             <p class="text-xs text-muted-foreground">
               {{ formatFileSize(uploadedFile.file.size) }}
             </p>
-            <div v-if="uploadedFile.status === 'uploading'" class="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
+            <div v-if="uploadedFile.status === 'uploading' || uploadedFile.status === 'processing'" class="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
               <div
                 class="h-full bg-primary transition-all duration-300"
                 :style="{ width: `${uploadedFile.progress}%` }"
               />
             </div>
+            <p v-if="uploadedFile.message && (uploadedFile.status === 'uploading' || uploadedFile.status === 'processing')" class="mt-1 text-xs text-muted-foreground">
+              {{ uploadedFile.message }}
+            </p>
+            <p v-if="uploadedFile.status === 'error'" class="mt-1 text-xs text-red-500">
+              {{ uploadedFile.error }}
+            </p>
           </div>
           <div class="flex items-center gap-2">
-            <n-spin v-if="uploadedFile.status === 'uploading'" :size="20" />
-            <n-icon v-if="uploadedFile.status === 'success'" size="20" color="#10b981">
+            <n-spin v-if="uploadedFile.status === 'uploading' || uploadedFile.status === 'processing'" :size="20" />
+            <n-icon v-if="uploadedFile.status === 'completed'" size="20" color="#10b981">
               <CheckCircle2 />
             </n-icon>
             <n-button
@@ -103,15 +111,23 @@
     </div>
 
     <!-- Action Buttons -->
-    <div v-if="files.length > 0" class="flex justify-end gap-3">
-      <n-button @click="clearFiles">清空列表</n-button>
-      <n-button type="primary">开始 OCR 识别</n-button>
+    <div v-if="ocrStore.files.length > 0" class="flex justify-end gap-3">
+      <n-button @click="clearFiles" :disabled="isProcessing">清空列表</n-button>
+      <n-button
+        type="primary"
+        @click="handleStartOcr"
+        :disabled="isProcessing || ocrStore.files.length === 0"
+        :loading="isProcessing"
+      >
+        {{ isProcessing ? '识别中...' : '开始 OCR 识别' }}
+      </n-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   Upload,
   FileText,
@@ -121,23 +137,22 @@ import {
   X,
   CheckCircle2,
 } from 'lucide-vue-next'
+import { processOcr } from '@/api/ocr'
+import { useOcrStore } from '@/stores/ocr'
 
-interface UploadedFile {
-  id: string
-  file: File
-  status: 'uploading' | 'success' | 'error'
-  progress: number
-}
+const router = useRouter()
+const ocrStore = useOcrStore()
 
-const files = ref<UploadedFile[]>([])
 const isDragActive = ref(false)
+const isProcessing = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const getFileIcon = (type: string) => {
   if (type.includes('pdf')) return FileText
   if (type.includes('word') || type.includes('document')) return FileText
   if (type.includes('sheet') || type.includes('excel')) return FileSpreadsheet
-  if (type.includes('markdown') || type.includes('text')) return FileCode
+  if (type.includes('image') || type.includes('png') || type.includes('jpg') || type.includes('jpeg') || type.includes('bmp') || type.includes('tiff') || type.includes('gif')) return FileText
+  if (type.includes('text/plain') || type.includes('txt')) return FileCode
   return File
 }
 
@@ -146,7 +161,12 @@ const getFileTypeBadge = (_type: string, name: string) => {
   if (ext === 'pdf') return { label: 'PDF', variant: 'default' as const }
   if (ext === 'doc' || ext === 'docx') return { label: 'Word', variant: 'secondary' as const }
   if (ext === 'xls' || ext === 'xlsx') return { label: 'Excel', variant: 'secondary' as const }
-  if (ext === 'md') return { label: 'Markdown', variant: 'secondary' as const }
+  if (ext === 'png') return { label: 'PNG', variant: 'default' as const }
+  if (ext === 'jpg' || ext === 'jpeg') return { label: 'JPG', variant: 'default' as const }
+  if (ext === 'bmp') return { label: 'BMP', variant: 'default' as const }
+  if (ext === 'tiff' || ext === 'tif') return { label: 'TIFF', variant: 'default' as const }
+  if (ext === 'gif') return { label: 'GIF', variant: 'default' as const }
+  if (ext === 'txt') return { label: 'TXT', variant: 'secondary' as const }
   return { label: ext?.toUpperCase() || 'FILE', variant: 'outline' as const }
 }
 
@@ -157,52 +177,72 @@ const triggerUpload = () => {
 const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files) {
-    addFiles(Array.from(target.files))
+    ocrStore.addFiles(Array.from(target.files))
   }
 }
 
 const handleDrop = (event: DragEvent) => {
   isDragActive.value = false
   if (event.dataTransfer?.files) {
-    addFiles(Array.from(event.dataTransfer.files))
+    ocrStore.addFiles(Array.from(event.dataTransfer.files))
   }
 }
 
-const addFiles = (newFiles: File[]) => {
-  const uploads: UploadedFile[] = newFiles.map((file) => ({
-    id: Math.random().toString(36).substr(2, 9),
-    file,
-    status: 'uploading',
-    progress: 0,
-  }))
-
-  files.value = [...files.value, ...uploads]
-
-  uploads.forEach((uploadedFile) => {
-    const interval = setInterval(() => {
-      files.value = files.value.map((f) => {
-        if (f.id === uploadedFile.id) {
-          const newProgress = Math.min(f.progress + 10, 100)
-          return {
-            ...f,
-            progress: newProgress,
-            status: newProgress === 100 ? 'success' : 'uploading',
-          }
-        }
-        return f
-      })
-    }, 200)
-
-    setTimeout(() => clearInterval(interval), 2200)
-  })
-}
-
 const removeFile = (id: string) => {
-  files.value = files.value.filter((f) => f.id !== id)
+  ocrStore.removeFile(id)
 }
 
 const clearFiles = () => {
-  files.value = []
+  ocrStore.clearFiles()
+}
+
+const handleStartOcr = async () => {
+  isProcessing.value = true
+
+  const pendingFiles = ocrStore.files.filter(
+    (f) => f.status === 'pending' || f.status === 'error'
+  )
+
+  for (const fileRecord of pendingFiles) {
+    ocrStore.updateFile(fileRecord.id, { status: 'uploading', progress: 0, message: '正在上传文件...' })
+
+    try {
+      const result = await processOcr(
+        { file: fileRecord.file },
+        (event) => {
+          ocrStore.updateFile(fileRecord.id, {
+            progress: event.progress,
+            status: event.status === 'success' ? 'completed' : event.status as 'uploading' | 'processing' | 'completed' | 'error',
+            message: event.message,
+          })
+        }
+      )
+
+      ocrStore.updateFile(fileRecord.id, {
+        status: 'completed',
+        progress: 100,
+        message: '识别完成',
+        result,
+      })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'OCR处理失败'
+      ocrStore.updateFile(fileRecord.id, {
+        status: 'error',
+        error: message,
+      })
+    }
+  }
+
+  isProcessing.value = false
+
+  // Navigate to OCR results page and auto-select first completed file
+  const firstCompleted = ocrStore.files.find((f) => f.status === 'completed')
+  const targetId = firstCompleted?.id || ocrStore.files[0]?.id
+  if (targetId) {
+    router.push({ path: '/ocr', query: { selected: targetId } })
+  } else {
+    router.push('/ocr')
+  }
 }
 
 const formatFileSize = (bytes: number) => {
