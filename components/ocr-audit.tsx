@@ -40,6 +40,12 @@ import {
   TrendingUp,
   Calendar,
   User,
+  FileSearch,
+  ChevronLeft,
+  ChevronRight,
+  Activity,
+  Files,
+  BarChart3,
 } from "lucide-react"
 
 interface AuditRecord {
@@ -134,28 +140,28 @@ const getStatusBadge = (status: string) => {
   switch (status) {
     case "completed":
       return (
-        <Badge className="bg-success text-success-foreground gap-1">
+        <Badge className="bg-blue-500/10 text-blue-600 border-blue-200 gap-1.5 hover:bg-blue-500/15">
           <CheckCircle2 className="h-3 w-3" />
           已完成
         </Badge>
       )
     case "processing":
       return (
-        <Badge variant="secondary" className="gap-1">
-          <Clock className="h-3 w-3" />
+        <Badge variant="secondary" className="gap-1.5">
+          <Clock className="h-3 w-3 animate-spin" />
           处理中
         </Badge>
       )
     case "failed":
       return (
-        <Badge variant="destructive" className="gap-1">
+        <Badge variant="destructive" className="gap-1.5">
           <XCircle className="h-3 w-3" />
           失败
         </Badge>
       )
     case "pending":
       return (
-        <Badge variant="outline" className="gap-1">
+        <Badge variant="outline" className="gap-1.5">
           <Clock className="h-3 w-3" />
           待处理
         </Badge>
@@ -166,16 +172,18 @@ const getStatusBadge = (status: string) => {
 }
 
 const getAccuracyColor = (accuracy: number) => {
-  if (accuracy >= 99) return "text-success"
-  if (accuracy >= 95) return "text-primary"
-  if (accuracy >= 90) return "text-warning"
-  return "text-destructive"
+  if (accuracy >= 99) return "text-green-600 font-semibold"
+  if (accuracy >= 95) return "text-blue-600 font-medium"
+  if (accuracy >= 90) return "text-yellow-600 font-medium"
+  return "text-red-500"
 }
 
 export function OcrAudit() {
   const [records] = useState<AuditRecord[]>(mockAuditData)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 5
 
   const filteredRecords = records.filter((record) => {
     const matchesSearch = record.fileName
@@ -185,6 +193,12 @@ export function OcrAudit() {
       statusFilter === "all" || record.status === statusFilter
     return matchesSearch && matchesStatus
   })
+
+  const totalPages = Math.ceil(filteredRecords.length / pageSize)
+  const paginatedRecords = filteredRecords.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
 
   const stats = {
     total: records.length,
@@ -200,65 +214,83 @@ export function OcrAudit() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">OCR 审计</h2>
-        <p className="mt-1 text-muted-foreground">
-          查看和管理所有 OCR 处理记录
-        </p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground tracking-tight">OCR 审计</h2>
+          <p className="mt-1 text-muted-foreground">
+            查看和管理所有 OCR 处理记录
+          </p>
+        </div>
+        <Button className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white shadow-md">
+          <Download className="mr-2 h-4 w-4" />
+          导出报告
+        </Button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">总文件数</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
-                <CheckCircle2 className="h-5 w-5 text-success" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.completed}</p>
-                <p className="text-sm text-muted-foreground">已完成</p>
+        <Card className="overflow-hidden border-blue-100">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 border border-blue-100">
+                  <Files className="h-7 w-7 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-foreground">{stats.total}</p>
+                  <p className="text-sm text-muted-foreground">总文件数</p>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
-                <Clock className="h-5 w-5 text-warning" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.processing}</p>
-                <p className="text-sm text-muted-foreground">处理中</p>
+
+        <Card className="overflow-hidden border-green-100">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-green-50 border border-green-100">
+                  <CheckCircle2 className="h-7 w-7 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-foreground">{stats.completed}</p>
+                  <p className="text-sm text-muted-foreground">已完成</p>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <TrendingUp className="h-5 w-5 text-primary" />
+
+        <Card className="overflow-hidden border-yellow-100">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-yellow-50 border border-yellow-100">
+                  <Activity className="h-7 w-7 text-yellow-500" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-foreground">{stats.processing}</p>
+                  <p className="text-sm text-muted-foreground">处理中</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {stats.avgAccuracy.toFixed(1)}%
-                </p>
-                <p className="text-sm text-muted-foreground">平均准确率</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="overflow-hidden border-blue-100">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 border border-blue-100">
+                  <BarChart3 className="h-7 w-7 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold text-foreground">
+                    {stats.avgAccuracy.toFixed(1)}%
+                  </p>
+                  <p className="text-sm text-muted-foreground">平均准确率</p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -266,21 +298,27 @@ export function OcrAudit() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
+      <Card className="border-gray-200">
+        <CardContent className="p-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-1 items-center gap-4">
+            <div className="flex flex-1 items-center gap-3">
               <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="搜索文件名..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="pl-10 h-10 cursor-text border-gray-200 focus:border-blue-400 focus:ring-blue-100"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32">
+              <Select value={statusFilter} onValueChange={(v) => {
+                setStatusFilter(v)
+                setCurrentPage(1)
+              }}>
+                <SelectTrigger className="w-40 h-10 cursor-pointer border-gray-200 focus:border-blue-400">
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue placeholder="状态" />
                 </SelectTrigger>
@@ -292,146 +330,185 @@ export function OcrAudit() {
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              导出报告
-            </Button>
+            <div className="text-sm text-muted-foreground">
+              共找到 <span className="font-semibold text-foreground">{filteredRecords.length}</span> 条记录
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">处理记录</CardTitle>
-          <CardDescription>
-            共 {filteredRecords.length} 条记录
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>文件名</TableHead>
-                  <TableHead>上传时间</TableHead>
-                  <TableHead>处理耗时</TableHead>
-                  <TableHead>操作人</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>准确率</TableHead>
-                  <TableHead>问题</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRecords.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium text-foreground">
-                          {record.fileName}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {record.fileType.toUpperCase()}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        <span className="text-sm">{record.uploadTime}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {record.processTime}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <User className="h-3 w-3" />
-                        <span className="text-sm">{record.operator}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(record.status)}</TableCell>
-                    <TableCell>
-                      {record.status === "completed" ? (
-                        <span
-                          className={`font-medium ${getAccuracyColor(
-                            record.accuracy
-                          )}`}
-                        >
-                          {record.accuracy}%
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {record.status === "completed" ? (
-                        <div className="flex items-center gap-1">
-                          {record.issuesFound > 0 ? (
-                            <>
-                              <AlertTriangle className="h-3 w-3 text-warning" />
-                              <span className="text-sm">
-                                {record.issuesResolved}/{record.issuesFound}
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="h-3 w-3 text-success" />
-                              <span className="text-sm text-success">无问题</span>
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            查看详情
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Download className="mr-2 h-4 w-4" />
-                            下载结果
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            <XCircle className="mr-2 h-4 w-4" />
-                            删除记录
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-between pt-4">
-            <p className="text-sm text-muted-foreground">
-              显示 1-{filteredRecords.length} 条，共 {filteredRecords.length} 条
-            </p>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
-                上一页
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                下一页
-              </Button>
+      <Card className="overflow-hidden border-gray-200">
+        <CardHeader className="pb-4 border-b bg-gray-50/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">处理记录</CardTitle>
+              <CardDescription>
+                点击操作列查看更多操作
+              </CardDescription>
             </div>
           </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {paginatedRecords.length > 0 ? (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50 hover:bg-gray-50">
+                      <TableHead className="font-semibold text-gray-600">文件名</TableHead>
+                      <TableHead className="font-semibold text-gray-600">上传时间</TableHead>
+                      <TableHead className="font-semibold text-gray-600">处理耗时</TableHead>
+                      <TableHead className="font-semibold text-gray-600">操作人</TableHead>
+                      <TableHead className="font-semibold text-gray-600">状态</TableHead>
+                      <TableHead className="font-semibold text-gray-600">准确率</TableHead>
+                      <TableHead className="font-semibold text-gray-600">问题</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedRecords.map((record) => (
+                      <TableRow key={record.id} className="table-row-hover">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100">
+                              <FileText className="h-4 w-4 text-gray-500" />
+                            </div>
+                            <div>
+                              <span className="font-medium text-foreground">
+                                {record.fileName}
+                              </span>
+                              <Badge variant="outline" className="ml-2 text-[10px] border-gray-200">
+                                {record.fileType.toUpperCase()}
+                              </Badge>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span className="text-sm">{record.uploadTime}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground font-mono">
+                            {record.processTime}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <User className="h-3.5 w-3.5" />
+                            <span className="text-sm">{record.operator}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(record.status)}</TableCell>
+                        <TableCell>
+                          {record.status === "completed" ? (
+                            <span className={getAccuracyColor(record.accuracy)}>
+                              {record.accuracy}%
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {record.status === "completed" ? (
+                            <div className="flex items-center gap-2">
+                              {record.issuesFound > 0 ? (
+                                <>
+                                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                                  <span className="text-sm">
+                                    {record.issuesResolved}/{record.issuesFound}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                  <span className="text-sm text-green-600">无问题</span>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem className="cursor-pointer">
+                                <Eye className="mr-2 h-4 w-4" />
+                                查看详情
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="cursor-pointer">
+                                <Download className="mr-2 h-4 w-4" />
+                                下载结果
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-red-500 cursor-pointer">
+                                <XCircle className="mr-2 h-4 w-4" />
+                                删除记录
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between px-5 py-4 border-t bg-gray-50/50">
+                <p className="text-sm text-muted-foreground">
+                  显示 {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredRecords.length)} 条，
+                  共 {filteredRecords.length} 条
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="cursor-pointer border-gray-200"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "ghost"}
+                      size="sm"
+                      className="h-8 w-8 p-0 cursor-pointer"
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="cursor-pointer border-gray-200"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 text-muted-foreground">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                <FileSearch className="h-8 w-8 opacity-50" />
+              </div>
+              <p className="text-lg font-medium">未找到匹配记录</p>
+              <p className="text-sm">请尝试调整搜索条件</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

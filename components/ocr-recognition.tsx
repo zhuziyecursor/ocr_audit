@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Copy,
   Download,
+  FileSearch,
 } from "lucide-react"
 
 interface RecognizedFile {
@@ -121,10 +122,13 @@ export function OcrRecognition() {
     navigator.clipboard.writeText(text)
   }
 
+  const completedCount = files.filter((f) => f.status === "completed").length
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-foreground">OCR 识别</h2>
+        <h2 className="text-2xl font-bold text-foreground tracking-tight">OCR 识别</h2>
         <p className="mt-1 text-muted-foreground">
           根据文件类型自动选择最佳识别引擎
         </p>
@@ -143,7 +147,7 @@ export function OcrRecognition() {
                 OCR 引擎
               </label>
               <Select value={ocrEngine} onValueChange={setOcrEngine}>
-                <SelectTrigger>
+                <SelectTrigger className="cursor-pointer">
                   <SelectValue placeholder="选择引擎" />
                 </SelectTrigger>
                 <SelectContent>
@@ -159,7 +163,7 @@ export function OcrRecognition() {
                 识别语言
               </label>
               <Select defaultValue="zh">
-                <SelectTrigger>
+                <SelectTrigger className="cursor-pointer">
                   <SelectValue placeholder="选择语言" />
                 </SelectTrigger>
                 <SelectContent>
@@ -175,7 +179,7 @@ export function OcrRecognition() {
                 输出格式
               </label>
               <Select defaultValue="text">
-                <SelectTrigger>
+                <SelectTrigger className="cursor-pointer">
                   <SelectValue placeholder="选择格式" />
                 </SelectTrigger>
                 <SelectContent>
@@ -195,10 +199,14 @@ export function OcrRecognition() {
         {/* File List */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-lg">待识别文件</CardTitle>
-            <CardDescription>
-              {files.filter((f) => f.status === "completed").length}/{files.length} 已完成
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">待识别文件</CardTitle>
+                <CardDescription>
+                  {completedCount}/{files.length} 已完成
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -208,13 +216,13 @@ export function OcrRecognition() {
                   <div
                     key={file.id}
                     onClick={() => setSelectedFile(file)}
-                    className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                    className={`group flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all duration-200 ${
                       selectedFile?.id === file.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:bg-muted/50"
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border hover:bg-muted/30 hover:border-muted-foreground/30"
                     }`}
                   >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted transition-colors duration-200 group-hover:bg-muted/80">
                       <Icon className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -234,19 +242,20 @@ export function OcrRecognition() {
                             e.stopPropagation()
                             handleStartOcr(file.id)
                           }}
+                          className="cursor-pointer"
                         >
                           <Play className="mr-1 h-3 w-3" />
                           识别
                         </Button>
                       )}
                       {file.status === "processing" && (
-                        <Badge variant="secondary">
+                        <Badge variant="secondary" className="gap-1">
                           <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                           处理中
                         </Badge>
                       )}
                       {file.status === "completed" && (
-                        <Badge className="bg-success text-success-foreground">
+                        <Badge className="bg-success text-success-foreground gap-1">
                           <CheckCircle2 className="mr-1 h-3 w-3" />
                           完成
                         </Badge>
@@ -279,11 +288,12 @@ export function OcrRecognition() {
                     size="sm"
                     variant="outline"
                     onClick={() => copyToClipboard(selectedFile.content || "")}
+                    className="cursor-pointer"
                   >
                     <Copy className="mr-1 h-3 w-3" />
                     复制
                   </Button>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" className="cursor-pointer">
                     <Download className="mr-1 h-3 w-3" />
                     导出
                   </Button>
@@ -293,13 +303,13 @@ export function OcrRecognition() {
           </CardHeader>
           <CardContent>
             {selectedFile?.status === "completed" && selectedFile.content ? (
-              <Tabs defaultValue="preview">
-                <TabsList>
-                  <TabsTrigger value="preview">预览</TabsTrigger>
-                  <TabsTrigger value="raw">原始文本</TabsTrigger>
+              <Tabs defaultValue="preview" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="preview" className="cursor-pointer">预览</TabsTrigger>
+                  <TabsTrigger value="raw" className="cursor-pointer">原始文本</TabsTrigger>
                 </TabsList>
                 <TabsContent value="preview" className="mt-4">
-                  <div className="rounded-lg bg-muted/50 p-4">
+                  <div className="rounded-lg bg-muted/30 p-4">
                     <pre className="whitespace-pre-wrap text-sm text-foreground font-mono leading-relaxed">
                       {selectedFile.content}
                     </pre>
@@ -314,14 +324,16 @@ export function OcrRecognition() {
                 </TabsContent>
               </Tabs>
             ) : selectedFile?.status === "processing" ? (
-              <div className="flex min-h-[300px] flex-col items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="mt-4 text-muted-foreground">正在识别文档内容...</p>
+              <div className="flex min-h-[300px] flex-col items-center justify-center gap-4">
+                <div className="relative">
+                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+                <p className="text-muted-foreground">正在识别文档内容...</p>
               </div>
             ) : (
-              <div className="flex min-h-[300px] flex-col items-center justify-center text-muted-foreground">
-                <FileText className="h-12 w-12 opacity-50" />
-                <p className="mt-4">选择文件并开始识别</p>
+              <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 text-muted-foreground">
+                <FileSearch className="h-12 w-12 opacity-50" />
+                <p>选择文件并开始识别</p>
               </div>
             )}
           </CardContent>

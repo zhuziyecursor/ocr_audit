@@ -24,6 +24,9 @@ import {
   Save,
   RotateCcw,
   FileText,
+  ThumbsUp,
+  ThumbsDown,
+  FileCheck,
 } from "lucide-react"
 
 interface IssueItem {
@@ -136,7 +139,7 @@ export function ContentProofread() {
   const [selectedIssue, setSelectedIssue] = useState<IssueItem | null>(mockIssues[0])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [content, setContent] = useState(mockContent)
-  const [selectedFile, setSelectedFile] = useState("1")
+  const [selectedFile] = useState("1")
 
   const pendingIssues = issues.filter((i) => i.status === "pending")
   const acceptedIssues = issues.filter((i) => i.status === "accepted")
@@ -170,8 +173,9 @@ export function ContentProofread() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-foreground">内容校对</h2>
+        <h2 className="text-2xl font-bold text-foreground tracking-tight">内容校对</h2>
         <p className="mt-1 text-muted-foreground">
           审核并修正 OCR 识别中可能存在的问题
         </p>
@@ -243,8 +247,8 @@ export function ContentProofread() {
                 <CardTitle className="text-lg">问题列表</CardTitle>
                 <CardDescription>点击查看详情</CardDescription>
               </div>
-              <Select value={selectedFile} onValueChange={setSelectedFile}>
-                <SelectTrigger className="w-40">
+              <Select value={selectedFile} onValueChange={() => {}}>
+                <SelectTrigger className="w-40 cursor-pointer">
                   <SelectValue placeholder="选择文件" />
                 </SelectTrigger>
                 <SelectContent>
@@ -255,7 +259,7 @@ export function ContentProofread() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-[450px] overflow-auto">
+            <div className="space-y-2 max-h-[450px] overflow-auto pr-2">
               {issues.map((issue) => (
                 <div
                   key={issue.id}
@@ -264,10 +268,10 @@ export function ContentProofread() {
                     setCurrentIndex(pendingIssues.indexOf(issue))
                   }}
                   className={cn(
-                    "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+                    "group flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-all duration-200",
                     selectedIssue?.id === issue.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:bg-muted/50",
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:bg-muted/30 hover:border-muted-foreground/30",
                     issue.status === "accepted" && "opacity-60",
                     issue.status === "rejected" && "opacity-40"
                   )}
@@ -318,18 +322,23 @@ export function ContentProofread() {
                   </CardDescription>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 border rounded-md">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
+                  className="h-8 w-8 rounded-r-none cursor-pointer"
                   onClick={goToPrev}
                   disabled={currentIndex === 0}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
+                <span className="px-2 text-xs text-muted-foreground min-w-[60px] text-center">
+                  {pendingIssues.length > 0 ? `${currentIndex + 1}/${pendingIssues.length}` : "0/0"}
+                </span>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
+                  className="h-8 w-8 rounded-l-none cursor-pointer"
                   onClick={goToNext}
                   disabled={currentIndex >= pendingIssues.length - 1}
                 >
@@ -358,7 +367,7 @@ export function ContentProofread() {
                       <Input
                         value={selectedIssue.original}
                         readOnly
-                        className="bg-destructive/10 border-destructive/20"
+                        className="bg-destructive/10 border-destructive/20 cursor-default"
                       />
                     </div>
                     <div className="space-y-1">
@@ -367,7 +376,7 @@ export function ContentProofread() {
                       </label>
                       <Input
                         value={selectedIssue.suggestion}
-                        className="bg-success/10 border-success/20"
+                        className="bg-success/10 border-success/20 cursor-default"
                       />
                     </div>
                   </div>
@@ -403,21 +412,28 @@ export function ContentProofread() {
                     <Button
                       variant="outline"
                       onClick={() => handleReject(selectedIssue.id)}
+                      className="cursor-pointer"
                     >
-                      <XCircle className="mr-2 h-4 w-4" />
+                      <ThumbsDown className="mr-2 h-4 w-4" />
                       忽略
                     </Button>
-                    <Button onClick={() => handleAccept(selectedIssue.id)}>
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    <Button
+                      onClick={() => handleAccept(selectedIssue.id)}
+                      className="cursor-pointer"
+                    >
+                      <ThumbsUp className="mr-2 h-4 w-4" />
                       采纳修改
                     </Button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex min-h-[400px] flex-col items-center justify-center text-muted-foreground">
-                <CheckCircle2 className="h-12 w-12 text-success opacity-50" />
-                <p className="mt-4">所有问题已处理完毕</p>
+              <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-muted-foreground">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+                  <FileCheck className="h-8 w-8 text-success" />
+                </div>
+                <p className="text-lg font-medium">所有问题已处理完毕</p>
+                <p className="text-sm">恭喜！当前没有待处理的问题</p>
               </div>
             )}
           </CardContent>
@@ -426,11 +442,11 @@ export function ContentProofread() {
 
       {/* Action Bar */}
       <div className="flex justify-end gap-3">
-        <Button variant="outline">
+        <Button variant="outline" className="cursor-pointer">
           <RotateCcw className="mr-2 h-4 w-4" />
           重置所有
         </Button>
-        <Button>
+        <Button className="cursor-pointer">
           <Save className="mr-2 h-4 w-4" />
           保存修改
         </Button>

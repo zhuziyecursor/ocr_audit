@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import {
   ArrowLeftRight,
@@ -23,6 +23,7 @@ import {
   Download,
   ZoomIn,
   ZoomOut,
+  GitCompare,
 } from "lucide-react"
 
 interface DiffLine {
@@ -76,11 +77,25 @@ const mockFiles = [
   { id: "4", name: "技术文档.md" },
 ]
 
+const getDiffLineClass = (type: DiffLine["type"]) => {
+  switch (type) {
+    case "added":
+      return "bg-success/10 border-l-2 border-success"
+    case "removed":
+      return "bg-destructive/10 border-l-2 border-destructive"
+    case "modified":
+      return "bg-warning/10 border-l-2 border-warning"
+    default:
+      return ""
+  }
+}
+
 export function FileCompare() {
   const [sourceFile, setSourceFile] = useState<string>("1")
   const [targetFile, setTargetFile] = useState<string>("2")
   const [diffResult, setDiffResult] = useState<DiffLine[]>(mockDiffResult)
   const [viewMode, setViewMode] = useState<"split" | "unified">("split")
+  const [fontSize, setFontSize] = useState(14)
 
   const stats = {
     added: diffResult.filter((l) => l.type === "added").length,
@@ -90,7 +105,6 @@ export function FileCompare() {
   }
 
   const handleCompare = () => {
-    // In real implementation, this would call the backend API
     setDiffResult(mockDiffResult)
   }
 
@@ -100,10 +114,14 @@ export function FileCompare() {
     setTargetFile(temp)
   }
 
+  const zoomIn = () => setFontSize((prev) => Math.min(prev + 2, 24))
+  const zoomOut = () => setFontSize((prev) => Math.max(prev - 2, 10))
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-foreground">文件对比</h2>
+        <h2 className="text-2xl font-bold text-foreground tracking-tight">文件对比</h2>
         <p className="mt-1 text-muted-foreground">
           对比源文件和目标文件的内容差异
         </p>
@@ -122,7 +140,7 @@ export function FileCompare() {
                 源文件
               </label>
               <Select value={sourceFile} onValueChange={setSourceFile}>
-                <SelectTrigger>
+                <SelectTrigger className="cursor-pointer">
                   <SelectValue placeholder="选择源文件" />
                 </SelectTrigger>
                 <SelectContent>
@@ -141,8 +159,9 @@ export function FileCompare() {
             <Button
               variant="outline"
               size="icon"
-              className="shrink-0 mt-6"
+              className="shrink-0 mt-6 cursor-pointer"
               onClick={swapFiles}
+              aria-label="交换文件"
             >
               <ArrowLeftRight className="h-4 w-4" />
             </Button>
@@ -152,7 +171,7 @@ export function FileCompare() {
                 目标文件
               </label>
               <Select value={targetFile} onValueChange={setTargetFile}>
-                <SelectTrigger>
+                <SelectTrigger className="cursor-pointer">
                   <SelectValue placeholder="选择目标文件" />
                 </SelectTrigger>
                 <SelectContent>
@@ -168,8 +187,8 @@ export function FileCompare() {
               </Select>
             </div>
 
-            <Button className="mt-6 shrink-0" onClick={handleCompare}>
-              <RefreshCw className="mr-2 h-4 w-4" />
+            <Button className="mt-6 shrink-0 cursor-pointer" onClick={handleCompare}>
+              <GitCompare className="mr-2 h-4 w-4" />
               开始对比
             </Button>
           </div>
@@ -179,38 +198,55 @@ export function FileCompare() {
       {/* Stats & Controls */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap gap-3">
-          <Badge variant="outline" className="gap-1">
-            <Plus className="h-3 w-3 text-success" />
-            新增 {stats.added}
+          <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+            <Plus className="h-3.5 w-3.5 text-success" />
+            <span>新增 {stats.added}</span>
           </Badge>
-          <Badge variant="outline" className="gap-1">
-            <Minus className="h-3 w-3 text-destructive" />
-            删除 {stats.removed}
+          <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+            <Minus className="h-3.5 w-3.5 text-destructive" />
+            <span>删除 {stats.removed}</span>
           </Badge>
-          <Badge variant="outline" className="gap-1">
-            <RefreshCw className="h-3 w-3 text-warning" />
-            修改 {stats.modified}
+          <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+            <RefreshCw className="h-3.5 w-3.5 text-warning" />
+            <span>修改 {stats.modified}</span>
           </Badge>
-          <Badge variant="outline" className="gap-1">
-            <Equal className="h-3 w-3 text-muted-foreground" />
-            相同 {stats.unchanged}
+          <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+            <Equal className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>相同 {stats.unchanged}</span>
           </Badge>
         </div>
 
         <div className="flex items-center gap-2">
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "split" | "unified")}>
-            <TabsList>
-              <TabsTrigger value="split">分栏视图</TabsTrigger>
-              <TabsTrigger value="unified">合并视图</TabsTrigger>
+            <TabsList className="grid grid-cols-2">
+              <TabsTrigger value="split" className="cursor-pointer">分栏视图</TabsTrigger>
+              <TabsTrigger value="unified" className="cursor-pointer">合并视图</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button variant="outline" size="icon">
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon">
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm">
+          <div className="flex items-center border rounded-md">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-r-none cursor-pointer"
+              onClick={zoomOut}
+              aria-label="缩小"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="px-2 text-xs text-muted-foreground min-w-[40px] text-center">
+              {fontSize}px
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-l-none cursor-pointer"
+              onClick={zoomIn}
+              aria-label="放大"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button variant="outline" size="sm" className="cursor-pointer">
             <Download className="mr-2 h-4 w-4" />
             导出报告
           </Button>
@@ -224,7 +260,7 @@ export function FileCompare() {
             <div className="grid grid-cols-2 divide-x divide-border">
               {/* Source */}
               <div>
-                <div className="border-b border-border bg-muted/50 px-4 py-2">
+                <div className="sticky top-0 z-10 border-b border-border bg-muted/50 px-4 py-2">
                   <p className="text-sm font-medium text-muted-foreground">
                     源文件: {mockFiles.find((f) => f.id === sourceFile)?.name}
                   </p>
@@ -234,15 +270,18 @@ export function FileCompare() {
                     <div
                       key={`source-${idx}`}
                       className={cn(
-                        "flex font-mono text-sm",
-                        line.type === "removed" && "bg-destructive/10",
-                        line.type === "modified" && "bg-warning/10"
+                        "flex font-mono transition-colors duration-150",
+                        getDiffLineClass(line.type),
+                        line.type === "removed" || line.type === "modified"
+                          ? "bg-destructive/5"
+                          : ""
                       )}
+                      style={{ fontSize: `${fontSize}px` }}
                     >
-                      <span className="w-12 shrink-0 border-r border-border bg-muted/30 px-2 py-1 text-right text-muted-foreground">
+                      <span className="w-12 shrink-0 border-r border-border bg-muted/30 px-2 py-1.5 text-right text-muted-foreground select-none">
                         {line.lineNumber.source || ""}
                       </span>
-                      <span className="flex-1 px-4 py-1">
+                      <span className="flex-1 px-4 py-1.5">
                         {line.type === "modified"
                           ? line.oldContent
                           : line.type !== "added"
@@ -256,7 +295,7 @@ export function FileCompare() {
 
               {/* Target */}
               <div>
-                <div className="border-b border-border bg-muted/50 px-4 py-2">
+                <div className="sticky top-0 z-10 border-b border-border bg-muted/50 px-4 py-2">
                   <p className="text-sm font-medium text-muted-foreground">
                     目标文件: {mockFiles.find((f) => f.id === targetFile)?.name}
                   </p>
@@ -266,15 +305,18 @@ export function FileCompare() {
                     <div
                       key={`target-${idx}`}
                       className={cn(
-                        "flex font-mono text-sm",
-                        line.type === "added" && "bg-success/10",
-                        line.type === "modified" && "bg-success/10"
+                        "flex font-mono transition-colors duration-150",
+                        getDiffLineClass(line.type),
+                        (line.type === "added" || line.type === "modified")
+                          ? "bg-success/5"
+                          : ""
                       )}
+                      style={{ fontSize: `${fontSize}px` }}
                     >
-                      <span className="w-12 shrink-0 border-r border-border bg-muted/30 px-2 py-1 text-right text-muted-foreground">
+                      <span className="w-12 shrink-0 border-r border-border bg-muted/30 px-2 py-1.5 text-right text-muted-foreground select-none">
                         {line.lineNumber.target || ""}
                       </span>
-                      <span className="flex-1 px-4 py-1">
+                      <span className="flex-1 px-4 py-1.5">
                         {line.type !== "removed" ? line.content : ""}
                       </span>
                     </div>
@@ -288,24 +330,23 @@ export function FileCompare() {
                 <div
                   key={idx}
                   className={cn(
-                    "flex font-mono text-sm",
-                    line.type === "added" && "bg-success/10",
-                    line.type === "removed" && "bg-destructive/10",
-                    line.type === "modified" && "bg-warning/10"
+                    "flex font-mono transition-colors duration-150",
+                    getDiffLineClass(line.type)
                   )}
+                  style={{ fontSize: `${fontSize}px` }}
                 >
-                  <span className="w-8 shrink-0 border-r border-border bg-muted/30 px-2 py-1 text-center text-muted-foreground">
-                    {line.type === "added" && <Plus className="h-3 w-3 text-success" />}
-                    {line.type === "removed" && <Minus className="h-3 w-3 text-destructive" />}
-                    {line.type === "modified" && <RefreshCw className="h-3 w-3 text-warning" />}
+                  <span className="w-10 shrink-0 border-r border-border bg-muted/30 px-2 py-1.5 text-center text-muted-foreground select-none">
+                    {line.type === "added" && <Plus className="h-3.5 w-3.5 text-success inline" />}
+                    {line.type === "removed" && <Minus className="h-3.5 w-3.5 text-destructive inline" />}
+                    {line.type === "modified" && <RefreshCw className="h-3.5 w-3.5 text-warning inline" />}
                   </span>
-                  <span className="w-12 shrink-0 border-r border-border bg-muted/30 px-2 py-1 text-right text-muted-foreground">
+                  <span className="w-12 shrink-0 border-r border-border bg-muted/30 px-2 py-1.5 text-right text-muted-foreground select-none">
                     {line.lineNumber.source || "-"}
                   </span>
-                  <span className="w-12 shrink-0 border-r border-border bg-muted/30 px-2 py-1 text-right text-muted-foreground">
+                  <span className="w-12 shrink-0 border-r border-border bg-muted/30 px-2 py-1.5 text-right text-muted-foreground select-none">
                     {line.lineNumber.target || "-"}
                   </span>
-                  <span className="flex-1 px-4 py-1">{line.content}</span>
+                  <span className="flex-1 px-4 py-1.5">{line.content}</span>
                 </div>
               ))}
             </div>
